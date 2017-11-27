@@ -31,4 +31,8 @@ for port in range(6881, 6890):
         break
 
 #decode the tracker response (step 5 of tutorial)
-
+tracker_response = bencode.bdecode(tracker.text)
+peers = tracker_response['peers']
+peers = [peers[i:i+6] for i in range(0, len(peers), 6)]
+# need to turn each peer byte into ipaddress + port combo
+print peers
