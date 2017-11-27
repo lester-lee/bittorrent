@@ -1,0 +1,6 @@
+import bencode, sys
+
+with open(sys.argv[1], 'rb') as f:
+    metadata = bencode.decode(f.read())
+
+print(metadata)
