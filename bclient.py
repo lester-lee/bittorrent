@@ -1,6 +1,7 @@
 import sys, requests, os
 import hashlib, urllib
 import bencode
+import socket
 
 with open(sys.argv[1], 'rb') as f:
     torrent = f.read()
@@ -34,5 +35,6 @@ for port in range(6881, 6890):
 tracker_response = bencode.bdecode(tracker.text)
 peers = tracker_response['peers']
 peers = [peers[i:i+6] for i in range(0, len(peers), 6)]
+peers = [(x[:4], x[4:]) for x in peers]
 # need to turn each peer byte into ipaddress + port combo
 print peers
