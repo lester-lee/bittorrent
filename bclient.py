@@ -38,3 +38,11 @@ peers = [peers[i:i+6] for i in range(0, len(peers), 6)]
 peers = [(x[:4], x[4:]) for x in peers]
 # need to turn each peer byte into ipaddress + port combo
 print peers
+
+peer = "127.0.0.1:8888" #pretend this is successful
+#connect to peer
+#do handshake
+
+#message parsing to figure out what file to get
+
+#write data to file
