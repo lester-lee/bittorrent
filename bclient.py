@@ -69,11 +69,28 @@ m = struct.pack(">IB", 1, 1)
 messages = struct.unpack("B" * len(data), data)
 print messages
 
-#right now we are getting the bitfield message
-#to Mary: figure out how to send interested message / receive more messages
-#and possibly how to start receiving data to download from the peer
+#***right now this is all wild speculation and we have no idea if it works or not. but ive formatted what i think the messages should be and we are sending an interested message and a request. after sending interested, we get a large field of 255, which we think is the peer telling us that it has all the pieces, and then after request we get another tuple -- maybe an unchoke? looks like an unchoke.*** 
+#we recommend checking out section 4.4 in the new tutorial bri sent.  
 
+#messages:
+not_interested = struct.pack(">IB", 0001, 3);
+interested = struct.pack(">IB", 0001, 2);
+unchoke = struct.pack(">IB", 0001, 1);
+choke = struct.pack(">IB", 0001, 0);
+request = struct.pack(">IBBBI", 0013, 6, 1, 1, 16); 
 
+#send interested message
+s.send(interested);
+response = s.recv(4096);
+r = struct.unpack("B" * len(response), response);
+#print response;
+print r;
+
+#send request message 
+s.send(request);
+response = s.recv(4096);
+r = struct.unpack("B" * len(response), response);
+print r; 
 
 #write data to file
 s.close()
