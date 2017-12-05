@@ -4,7 +4,7 @@ import bencode
 import socket
 import struct
 
-BUFFER_SIZE = 1024
+BUFFER_SIZE = 2**14
 
 with open(sys.argv[1], 'rb') as f:
     torrent = f.read()
@@ -55,43 +55,97 @@ pstr = "BitTorrent protocol"
 pstrlen = len(pstr)
 handshake = "".join([chr(pstrlen), pstr, chr(0)*8, info_hash20, peer_id20])
 s.send(handshake)
-peer_handshake = s.recv(4096)
+peer_handshake = s.recv(68)
 
 info_index = len(chr(pstrlen) + pstr) + 8
 
 if not info_hash20 == peer_handshake[info_index:info_index+20]:
     print "bad info hash"
     exit
-    
+
+#successful handshake, send interested
+'''
 #message parsing to figure out what file to get
 data = s.recv(5)
 m = struct.pack(">IB", 1, 1)
 messages = struct.unpack("B" * len(data), data)
 print messages
+'''
 
 #***right now this is all wild speculation and we have no idea if it works or not. but ive formatted what i think the messages should be and we are sending an interested message and a request. after sending interested, we get a large field of 255, which we think is the peer telling us that it has all the pieces, and then after request we get another tuple -- maybe an unchoke? looks like an unchoke.*** 
 #we recommend checking out section 4.4 in the new tutorial bri sent.  
 
 #messages:
-not_interested = struct.pack(">IB", 0001, 3);
-interested = struct.pack(">IB", 0001, 2);
-unchoke = struct.pack(">IB", 0001, 1);
-choke = struct.pack(">IB", 0001, 0);
-request = struct.pack(">IBBBI", 0013, 6, 1, 1, 16); 
+not_interested = struct.pack(">IB", 0001, 3)
+interested = struct.pack(">IB", 0001, 2)
+unchoke = struct.pack(">IB", 0001, 1)
+choke = struct.pack(">IB", 0001, 0)
+request = struct.pack(">IBBBI", 0013, 6, 1, 1, 16)
 
 #send interested message
-s.send(interested);
-response = s.recv(4096);
-r = struct.unpack("B" * len(response), response);
-#print response;
-print r;
+print "-> interested"
+s.send(interested)
 
-#send request message 
-s.send(request);
-response = s.recv(4096);
-r = struct.unpack("B" * len(response), response);
-print r; 
+buf = b''
+#while True: #continue to receive messages
+for x in range(4): #just to test 4 times
+    response = s.recv(BUFFER_SIZE)
+    buf += response
+    while True: #parse through the messages received
+        if len(buf) < 5: #not enough info to parse
+            break
+
+        length = struct.unpack(">I", buf[:4])[0]
+        print "length:{}".format(length)
+        
+        if len(buf) < length: #payload not long enough
+            break
+
+        def get_payload(buf):
+            return buf[:4+length]
+        def read_buffer(buf):
+            return buf[4+length:]
+
+        if length == 0:
+            print "<- keep alive"
+            buf = read_buffer(buf)            
+        
+        # parse messages
+        
+        mid = struct.unpack(">B", buf[4:5])[0]
+        print "message id:{}".format(mid)
+
+        if mid == 0:
+            print "<- choke"
+            buf = read_buffer(buf)
+        elif mid == 1:
+            print "<- unchoke"
+            buf = read_buffer(buf)
+        elif mid == 2:
+            print "<- interested"
+            buf = read_buffer(buf)
+        elif mid == 3:
+            print "<- not interested"
+            buf = read_buffer(buf)
+        elif mid == 4:
+            print "<- have"
+            buf = buf[5:] #have has fixed message length
+            buf = read_buffer(buf)
+        elif mid == 5:
+            print "<- bitfield"
+            bitfield = buf[5:5+length-1]
+            # should update some internal bitfield somewhere to keep track of pieces
+            print "Bitfield: {}".format(bitfield)
+            buf = read_buffer(buf)
+            s.send(interested) #probably not the right thing to send
+        elif mid == 6:
+            print "<- request"
+            buf = read_buffer(buf)
+        elif mid == 7:
+            print "<- piece"
+            #need to download the files!
+        else:
+            print "unknown message id:{}".format(mid)
 
 #write data to file
 s.close()
-
