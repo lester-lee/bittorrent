@@ -1,0 +1,13 @@
+import bencode
+
+class Torrent:
+    def __init__(self, path):
+        with open(path, 'rb') as f:
+            torrent = f.read()
+        self.metadata = bencode.bdecode(torrent)
+
+    def read_torrent(path):
+        with open(path, 'rb') as f:
+            return bencode.bdecode(f.read())
+    
+            

@@ -1,0 +1,12 @@
+class Tracker:
+    def __init__(self, torrent):
+        self.urls = self.generate_urls(torrent, 6881, 6890)
+        self.peers = self.get_peers()
+
+    def generate_urls(tor, start_port, end_port):
+        urls = []
+        for port in range(start_port, end_port):
+            url = "{}?info_hash={}&peer_id={}&port={}&uploaded={}&downloaded={}&left={}&compact={}&event={}".format(
+                announcer, info_hash, peer_id,
+                port, uploaded, downloaded, left, compact, event)
+            urls.append(url)
