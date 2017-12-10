@@ -1,0 +1,45 @@
+class Piece:
+    def __init__(self, index, length):
+        self.index = index
+        self.blocks = []
+        self.length = length
+        self.downloaded = 0
+        self.finished = False
+
+    def reset(self):
+        self.blocks = []
+        self.downloaded = 0
+        self.finished = False
+        
+    def get_next_block(self):
+        return Block(
+        
+    def add_block(self, block):
+        self.blocks.append(block)
+        self.finished = self.length == self.downloaded
+        return self.finished
+    
+    def get_data(self):
+        return b''.join([b.data for b in self.blocks])
+
+class Block:
+    def __init__(self, start, length):
+        self.start = start
+        self.length = length
+        self.data = None
+
+    def set_data(self, data):
+        self.data = data
+    
+class Downloader:
+    def __init__(self, torrent):
+        self.torrent = torrent
+        self.pieces_left = list(range(len(torrent.pieces)))
+        self.unfinished_pieces = {}
+        self.finished_pieces = []
+
+    def get_next_piece(self):
+        idx = self.pieces_left.pop()
+        return Piece(idx, self.torrent.piece_length)
+
+

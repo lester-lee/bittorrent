@@ -1,4 +1,4 @@
-import socket, struct
+import socket, struct, copy
 
 
 NOT_INTERESTED = struct.pack(">IB", 0001, 3)
@@ -8,10 +8,13 @@ CHOKE = struct.pack(">IB", 0001, 0)
 BUFFER_SIZE = 2**14   
 
 class Peer:
-    def __init__(self, torrent, info):
+    def __init__(self, torrent, downloader, info):
         self.ip_port = info
         self.torrent = torrent
+        self.downloader = downloader
         self.handshake = self.generate_handshake()
+        self.blocks = None 
+        self.piece = None 
 
     def generate_handshake(self):
         return "".join([
@@ -27,9 +30,17 @@ class Peer:
         print "-> interested"
         socket.send(INTERESTED)
 
+    def get_next_block(self):
+        if not self.piece or self.piece.finished: 
+            self.piece = self.downloader.get_next_piece()
+        if not self.blocks:
+            self.blocks = copy.deepcopy(self.piece.blocks)
+        return self.blocks.pop()
+
     def send_request(self, socket):
+        block = self.get_next_block()
         print "-> request"
-        REQUEST = struct.pack(">IBBBI", 0013, 6, 0, 0, 2**14)
+        REQUEST = struct.pack('>IbIII', 13, 6, block.piece, block.start, block.length)
         socket.send(REQUEST)
         
     def download(self):
@@ -44,7 +55,8 @@ class Peer:
     def receive_messages(self, socket):
         buf = b''
         while True:
-            print "start of new loop"
+        #for _ in range(10):
+            #print "start of new loop"
             resp = socket.recv(BUFFER_SIZE)
             buf += resp
             while True:
@@ -93,9 +105,17 @@ class Peer:
                     buf = read_buffer(buf)
                 elif mid == 7:
                     print "<- piece"
-                    #need to download the files!
-                    #keep some indexed byte string
-                    #once string is full, write string to file
+                    payload = get_payload(buf)
+                    buf = read_buffer(buf)
+                    l = struct.unpack(">I",payload[:4])[0]
+                    payload = struct.unpack(
+                        ">IbII" + str(l-9) + "s",
+                        payload[:length+4])
+                    piece_idx, start, data = payload[2], payload[3], payload[4]
+                    self.downloader.receive_block(piece_idx, start, data)
                 else:
                     print "unknown message id:{}".format(mid)
+                    payload = get_payload(buf)
+                    buf = read_buffer(buf)
+                    print "payload: {}".format(struct.unpack("B"*len(payload), payload))
                 self.send_request(socket)
