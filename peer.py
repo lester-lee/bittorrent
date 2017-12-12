@@ -8,13 +8,14 @@ CHOKE = struct.pack(">IB", 0001, 0)
 BUFFER_SIZE = 2**14   
 
 class Peer:
-    def __init__(self, torrent, downloader, info):
+    def __init__(self, torrent, downloader, info, verbose=False):
         self.ip_port = info
         self.torrent = torrent
         self.downloader = downloader
         self.handshake = self.generate_handshake()
         self.blocks = None 
-        self.piece = None 
+        self.piece = None
+        self.verbose = verbose
 
     def generate_handshake(self):
         return "".join([
@@ -27,21 +28,23 @@ class Peer:
         return self.torrent.info_hash[0] == peer_handshake[28:48]
 
     def send_interested(self, socket):
-        print "-> interested"
+        if self.verbose: print "-> interested"
         socket.send(INTERESTED)
 
     def get_next_block(self):
-        if not self.piece or self.piece.finished: 
+        if self.downloader.finished: return None
+        if (not self.piece) or (self.piece.finished) or len(self.blocks) == 0:
             self.piece = self.downloader.get_next_piece()
-        if not self.blocks:
             self.blocks = copy.deepcopy(self.piece.blocks)
         return self.blocks.pop()
 
     def send_request(self, socket):
         block = self.get_next_block()
-        print "-> request"
+        if not block: return False
+        if self.verbose: print "-> request {}:{}".format(block.piece, block.start)
         REQUEST = struct.pack('>IbIII', 13, 6, block.piece, block.start, block.length)
         socket.send(REQUEST)
+        return True
         
     def download(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -51,9 +54,11 @@ class Peer:
             return
         self.send_interested(s)
         self.receive_messages(s)
+        s.close()
         
-    def receive_messages(self, socket):
+    def receive_messages(self, socket, verbose=False):
         buf = b''
+        v = self.verbose
         while True:
         #for _ in range(10):
             #print "start of new loop"
@@ -80,31 +85,31 @@ class Peer:
                 #print "message id:{}".format(mid)
 
                 if mid == 0:
-                    print "<- choke"
+                    if v: print "<- choke"
                     buf = read_buffer(buf)
+                    return
                 elif mid == 1:
-                    print "<- unchoke"
+                    if v: print "<- unchoke"
                     buf = read_buffer(buf)
                 elif mid == 2:
-                    print "<- interested"
+                    if v: print "<- interested"
                     buf = read_buffer(buf)
                 elif mid == 3:
-                    print "<- not interested"
+                    if v: print "<- not interested"
                     buf = read_buffer(buf)
                 elif mid == 4:
-                    print "<- have"
+                    if v: print "<- have"
                     buf = buf[5:] #have has fixed message length
                     buf = read_buffer(buf)
                 elif mid == 5:
-                    print "<- bitfield"
+                    if v: print "<- bitfield"
                     bitfield = buf[5:5+length-1]
-                    print "Bitfield: {}".format(struct.unpack("B"*len(bitfield), bitfield))
+                    if v: print "Bitfield: {}".format(struct.unpack("B"*len(bitfield), bitfield))
                     buf = read_buffer(buf)
                 elif mid == 6:
-                    print "<- request"
+                    if v: print "<- request"
                     buf = read_buffer(buf)
                 elif mid == 7:
-                    print "<- piece"
                     payload = get_payload(buf)
                     buf = read_buffer(buf)
                     l = struct.unpack(">I",payload[:4])[0]
@@ -112,10 +117,12 @@ class Peer:
                         ">IbII" + str(l-9) + "s",
                         payload[:length+4])
                     piece_idx, start, data = payload[2], payload[3], payload[4]
+                    if v: print "<- piece {}".format(piece_idx)
                     self.downloader.receive_block(piece_idx, start, data)
                 else:
                     print "unknown message id:{}".format(mid)
                     payload = get_payload(buf)
                     buf = read_buffer(buf)
-                    print "payload: {}".format(struct.unpack("B"*len(payload), payload))
-                self.send_request(socket)
+                    if v: print "payload: {}".format(struct.unpack("B"*len(payload), payload))
+                    return
+                if not self.send_request(socket): return
