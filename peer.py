@@ -47,14 +47,18 @@ class Peer:
         return True
         
     def download(self):
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect(self.ip_port)
-        if not self.check_handshake(s):
-            print "bad info hash"
-            return
-        self.send_interested(s)
-        self.receive_messages(s)
-        s.close()
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(5)
+            s.connect(self.ip_port)
+            if not self.check_handshake(s):
+                #print "bad info hash"
+                return
+            self.send_interested(s)
+            self.receive_messages(s)
+            s.close()
+        except:
+            if self.piece: self.downloader.reset_piece(self.piece)
         
     def receive_messages(self, socket, verbose=False):
         buf = b''
@@ -78,8 +82,9 @@ class Peer:
                     return buf[4+length:]
 
                 if length == 0:
-                    print "<- keep alive"
+                    if v: print "<- keep alive"
                     buf = read_buffer(buf)
+                    raise Exception("messages not sending")
 
                 mid = struct.unpack(">B", buf[4:5])[0]
                 #print "message id:{}".format(mid)
@@ -87,7 +92,7 @@ class Peer:
                 if mid == 0:
                     if v: print "<- choke"
                     buf = read_buffer(buf)
-                    return
+                    raise Exception("peer choked")
                 elif mid == 1:
                     if v: print "<- unchoke"
                     buf = read_buffer(buf)

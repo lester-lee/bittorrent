@@ -4,14 +4,13 @@ import bencode
 class Tracker:
     def __init__(self, torrent):
         self.urls = self.generate_urls(torrent, 6881, 6890)
-        self.peers = self.get_peers()
 
     def generate_urls(self, tor, start_port, end_port):
         urls = []
         for port in range(start_port, end_port):
             url = "{}?info_hash={}&peer_id={}&port={}&uploaded={}&downloaded={}&left={}&compact={}&event={}".format(
                 tor.announcer, tor.info_hash[1], tor.peer_id,
-                port, 550, 0, tor.info['length'], 1, "started")
+                port, 100000, 0, tor.info['length'], 1, "started")
             urls.append(url)
         return urls
 

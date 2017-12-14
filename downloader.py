@@ -41,6 +41,7 @@ class Downloader:
     def __init__(self, torrent):
         self.torrent = torrent
         self.pieces = self.generate_pieces()
+        self.num_pieces = len(self.pieces)
         self.downloading_pieces = {}
         self.finished_pieces = {}
         self.final_data = [b''] * len(self.pieces)
@@ -67,26 +68,35 @@ class Downloader:
             self.downloading_pieces[piece.index] = piece
             return piece
 
+    def clear_wip_pieces(self):
+        self.downloading_pieces.clear()
+        
+    def reset_piece(self, piece):
+        piece.reset()
+        if piece.index in self.downloading_pieces:
+            del self.downloading_pieces[piece.index]
+
     def receive_block(self, piece_idx, start, data):
         piece = self.pieces[piece_idx]
         piece.save_block(start, data)
-        if not piece.finished:
-            return
+        if not piece.finished: return
+        if piece_idx in self.finished_pieces: return
         print "checking hash for piece {}".format(piece_idx)
         data = piece.get_data()
         check_hash = hashlib.sha1(data).digest()
         if check_hash != self.torrent.get_piece_hash(piece_idx):
             print 'bad piece hash'
-            piece.reset()
-            del self.downloading_pieces[piece_idx]
+            self.reset_piece(piece)
             return
         self.finished_pieces[piece_idx] = piece
-        print "Piece {} is finished downloading!".format(piece_idx)
+        print "Piece {}/{} is finished downloading!".format(piece_idx, self.num_pieces)
         self.final_data[piece_idx] = piece.get_data()
-        if len(self.finished_pieces) == len(self.pieces):
+        print len(self.finished_pieces), self.num_pieces
+        if len(self.finished_pieces) == self.num_pieces:
             print "File is finished downloading!"
             self.finished = True
             self.write_to_file()
+            exit()
 
     def write_to_file(self):
         with open(self.torrent.name, 'wb') as f:
