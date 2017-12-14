@@ -4,6 +4,12 @@ import hashlib, urllib
 import tracker
 
 class Torrent:
+    '''
+    Torrent is responsible for reading and decoding the
+    .torrent file, and parsing out the relevant information.
+    It also keeps track of the piece hashes.
+    '''
+    
     def __init__(self, path):
         metadata = self.read_torrent(path)
         self.metadata = metadata
@@ -15,7 +21,7 @@ class Torrent:
         self.length = metadata['info']['length']
         self.info_hash = self.get_info_hash()
         self.peer_id = self.generate_peer_id()
-        
+
     def read_torrent(self, path):
         with open(path, 'rb') as f:
             return bencode.bdecode(f.read())
@@ -33,12 +39,7 @@ class Torrent:
         return self.pieces[index]
 
     def generate_peer_id(self):
-        randstring = "".join(
-            [random.choice(string.digits) for _ in range(12)])
-        #return "-ZZ0001-" + randstring
         return "".join([random.choice(string.digits) for _ in range(20)])
 
     def generate_tracker(self):
         return tracker.Tracker(self)
-    
-            

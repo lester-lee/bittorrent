@@ -2,8 +2,13 @@ import requests
 import bencode
 
 class Tracker:
+    '''
+    Tracker is responsible for connecting to the tracker
+    specified by the given Torrent and getting a list of peers.
+    '''
+
     def __init__(self, torrent):
-        self.urls = self.generate_urls(torrent, 6881, 6890)
+        self.torrent = torrent
 
     def generate_urls(self, tor, start_port, end_port):
         '''
@@ -25,7 +30,8 @@ class Tracker:
         get_peers loops through the generated URLs until one
         of the tracker URLs successfully returns a list of peers.
         '''
-        for url in self.urls:
+        urls = self.generate_urls(self.torrent, 6881, 6890)
+        for url in urls:
             tracker = requests.get(url)
             if tracker.status_code == 200:
                 tracker_response = bencode.bdecode(tracker.text)
