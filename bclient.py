@@ -42,20 +42,22 @@ def generate_peers():
     peers.update(tracker.get_peers())
     for p in peers:
         peer_obj = peer.Peer(tor, downloader, p, verbose=False)
-        if limit and len(threads) < limit:
-            create_thread(peer_obj)
+        if limit > 0:
+            if len(threads) < limit:
+                create_thread(peer_obj)
         else:
             create_thread(peer_obj)
 
 
 generate_peers()
 max_num_peers = len(threads)
+print max_num_peers
 
 while not downloader.finished:
     threads = [t for t in threads if t.isAlive()]
     if time.time() - cur_time >= 60:
         downloader.clear_wip_pieces()
         cur_time = time.time()
-    if len(threads) < (max_num_peers / 10):
+    if len(threads) <= (max_num_peers / 10) + 1:
         print "Requesting more peers"
         generate_peers()
