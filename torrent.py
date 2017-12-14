@@ -35,7 +35,8 @@ class Torrent:
     def generate_peer_id(self):
         randstring = "".join(
             [random.choice(string.digits) for _ in range(12)])
-        return "-ZZ0001-" + randstring
+        #return "-ZZ0001-" + randstring
+        return "".join([random.choice(string.digits) for _ in range(20)])
 
     def generate_tracker(self):
         return tracker.Tracker(self)
