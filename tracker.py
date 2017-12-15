@@ -12,14 +12,13 @@ class Tracker:
 
     def generate_urls(self, tor, start_port, end_port):
         '''
-        generate_urls generates tracker URLs with the
-        following constants: uploaded = 100000, compact = 1
-        It generates a new peer-id for each URL.
+        generate_urls generates tracker URLs to iterate through
+        the port range. Only the port changes for each URL.
         '''
         urls = []
         for port in range(start_port, end_port):
             url = "{}?info_hash={}&peer_id={}&port={}&uploaded={}&downloaded={}&left={}&compact={}&event={}".format(
-                tor.announcer, tor.info_hash[1], tor.generate_peer_id(),
+                tor.announcer, tor.info_hash[1], tor.peer_id,
                 port, 100000, 0,
                 tor.info['length'], 1, "started")
             urls.append(url)
